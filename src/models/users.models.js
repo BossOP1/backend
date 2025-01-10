@@ -59,7 +59,7 @@ const userSchema = new mongoose.Schema(
     userSchema.pre("save", async function(next){  
         if(!this.isModified("password")) return next() // this line ensures that the encryption works only when passwoprd is modified
 
-        this.password = bcrypt.hash(this.password,10)   // this line is encrypting the password .hash is a method and 10 denotes the rounds of encryption
+        this.password = await bcrypt.hash(this.password,10)   // this line is encrypting the password .hash is a method and 10 denotes the rounds of encryption
         next()
     })
 
