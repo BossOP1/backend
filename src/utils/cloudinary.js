@@ -19,8 +19,10 @@ const uploadOnCloudinary = async (localFilePath)=>{
         }
         )
         // id file upload is successfull
-        console.log("the uploaded file url is",response.url)
+       // console.log("the uploaded file url is",response.url)
+      // console.log("response is @@@@@@@@@",response)
 
+        fs.unlinkSync(localFilePath)
         return response   // for the user
 
     } catch (error) {

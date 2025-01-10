@@ -1,29 +1,31 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import {apiError} from "../utils/apiError"
+import {apiError} from "../utils/apiError.js"
 import {User} from "../models/users.models.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js";
 
 
 const registerUser = asyncHandler(async(req,res)=>{
-    const { fullname , firstName , lastName , password,email} = req.body   // req.body  is a express js method
-     console.log("email :",email)
+    const { fullName, password,email,username} = req.body   // req.body  is a express js method
+   //  console.log("email :",email)
+    // console.log("req.body -------->",req.body)
 if(
-    [fullname,firstName,lastName,password,email].some((field)=>(field)?.trim === "")   // .some is a js method
+    [fullName,password,email,username].some((field)=>(field)?.trim === "")   // .some is a js method
 )    {
     throw new apiError(400,"all fields are required")
   }
  
-  const existedUser = User.findOne({            // find one is mogo Db method
-    $or: [{userName},{email}]
+  const existedUser = await User.findOne({            // find one is mogo Db method
+    $or: [{username},{email}]
   })
 
   if(existedUser){
-    throw new apiError(409,"user with same email or userName already existed")
+    throw new apiError(409,"user with same email or username already existed")
   }
     
        const avatarLocalPath = req.files?.avatar[0].path;           //.files is a milter ethod
        const coverImageLocalPath = req.files?.coverImage[0].path;
+    //   console.log("req.files -------->",req.files)
 
        if(!avatarLocalPath){
           throw new apiError(400,"avatar not exist")
@@ -43,14 +45,15 @@ if(
   
 
    const user = await User.create({                   // .create is a mongoose method
-        fullname,
+        fullName,
         email,
         avatar:avatar.url,
         coverImage:coverImage?.url || "",
-        password: userName.lowerCase(),
+        password,
+        username : username.toLowerCase(),
 
     })
-         const createdUser = await findUseeById(user._id).select(
+         const createdUser = await User.findById(user._id).select(
             "-password -refreshTokens"
          )
 
