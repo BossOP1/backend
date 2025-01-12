@@ -10,13 +10,15 @@ const generateAccessAndRefreshToken = async(userId)=>{
         const user = await User.findById(userId)
         const accessToken = user.generateAccessToken()
         const refreshToken = user.generateRefreshToken()
+      //  console.log("refresh token is--->",refreshToken)
+       // console.log("Access token is--->",accessToken)
 
         user.refreshToken = refreshToken
         await user.save({validateBeforeSave:false})
         return {accessToken,refreshToken}
 
     } catch (error) {
-        throw new apiError(500,"something went wrong in ggenerating tokens")
+        throw new apiError(500,"something went wrong in generating tokens")
     }
    
 }
@@ -89,7 +91,7 @@ const loginUser = asyncHandler(async(req,res)=>{
     const {username,email,password} = req.body
 
     // checks for user name and email 
-    if(!username || !email){
+    if(!(username || email)){
         throw new apiError(404,"username or email is required")
     }
      
@@ -111,9 +113,9 @@ const loginUser = asyncHandler(async(req,res)=>{
    }
      
    // access and refresh token
-    const {accessToken , refreshToken} =  await generateAccessAndRefreshToken(user._Id)
+    const {accessToken , refreshToken} =  await generateAccessAndRefreshToken(user._id)
 
-    const loggedInUser = User.findById(user._Id).select("-password -refreshTokens")
+    const loggedInUser = await User.findById(user._id).select("-password -refreshTokens")
 
     // for cookies
     const options = {
@@ -141,11 +143,13 @@ const loginUser = asyncHandler(async(req,res)=>{
 const logoutUser = asyncHandler(async(req,res)=>{
    await  User.findByIdAndUpdate(
         req.user._id,{
-            $set:{
-                refreshToken:undefined
-            },
+            $unset:{
+                refreshToken:1
+            }
+        },
+            {
             new:true,
-        }
+            }
      )
 
      const options = {
@@ -157,14 +161,62 @@ const logoutUser = asyncHandler(async(req,res)=>{
     .clearCookie("accessToken",options)
     .clearCookie("refreshToken",options)
     .json(new ApiResponse(200,
-        {
-
-        },
+        {},
         "user loggedout successfully"
         ))
 
 })
 
+const generatingAccessTokens = asyncHandler(async (req,res)=>{
+
+    // incomingfreshtoken sent by user
+    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
+
+    if(!incomingRefreshToken){
+        throw new apiError(401,"user unauthorized")
+    }
+
+    try {
+        const decodedToken = jwt.verify(
+            incomingRefreshToken,
+            process.env.REFRESH_TOKEN_SECRET,
+        )
+         
+        const user = await User.findById(decodedToken?._id)
+        
+        if(!user){
+            throw new apiError(401,"invalid refresh token")
+        }
+    
+        if(incomingRefreshToken !== user?.refreshToken){
+            throw new apiError("refresh token is expired or used")
+        }
+    
+        const options = {
+            httpOnly:true,
+            secure:true
+        }
+        
+        const {accessToken,newRefreshToken} = 
+        await generateAccessAndRefreshToken(user._id)
+    
+        return res.status(202)
+        .cookie("accessToken",accessToken,options)
+        .cookie("refreshToken",newRefreshToken,options)
+        .json(
+            new ApiResponse(
+                200,
+                {accessToken,newRefreshToken},
+                "accesss token refreshed successfully"
+            )
+        )
+    
+    
+    } catch (error) {
+        throw  new apiError(error,error?.message || "invalid refresh token")
+    }
+})
 
 
-export {registerUser , loginUser , logoutUser}
+
+export {registerUser , loginUser , logoutUser , generatingAccessTokens}
