@@ -3,6 +3,7 @@ import {apiError} from "../utils/apiError.js"
 import {User} from "../models/users.models.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js";
+import jwt from "jsonwebtoken";
 
 
 const generateAccessAndRefreshToken = async(userId)=>{
@@ -10,8 +11,8 @@ const generateAccessAndRefreshToken = async(userId)=>{
         const user = await User.findById(userId)
         const accessToken = user.generateAccessToken()
         const refreshToken = user.generateRefreshToken()
-      //  console.log("refresh token is--->",refreshToken)
-       // console.log("Access token is--->",accessToken)
+      // console.log("refresh token is--->",refreshToken)
+      // console.log("Access token is--->",accessToken)
 
         user.refreshToken = refreshToken
         await user.save({validateBeforeSave:false})
@@ -116,7 +117,7 @@ const loginUser = asyncHandler(async(req,res)=>{
     const {accessToken , refreshToken} =  await generateAccessAndRefreshToken(user._id)
 
     const loggedInUser = await User.findById(user._id).select("-password -refreshTokens")
-
+    // console.log("logged in user details are *********",loggedInUser)
     // for cookies
     const options = {
         httpOnly: true,
@@ -125,7 +126,7 @@ const loginUser = asyncHandler(async(req,res)=>{
     return res
     .status(202)
     .cookie("accessToken",accessToken,options)
-    .cookie("refreshTokens",refreshToken,options)
+    .cookie("refreshToken",refreshToken,options)
     .json(
         new ApiResponse(
             200,
@@ -167,7 +168,7 @@ const logoutUser = asyncHandler(async(req,res)=>{
 
 })
 
-const generatingAccessTokens = asyncHandler(async (req,res)=>{
+const refreshAccessTokens = asyncHandler(async (req,res)=>{
 
     // incomingfreshtoken sent by user
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
@@ -206,7 +207,7 @@ const generatingAccessTokens = asyncHandler(async (req,res)=>{
         .json(
             new ApiResponse(
                 200,
-                {accessToken,newRefreshToken},
+                {accessToken,refreshToken: newRefreshToken},
                 "accesss token refreshed successfully"
             )
         )
@@ -219,4 +220,4 @@ const generatingAccessTokens = asyncHandler(async (req,res)=>{
 
 
 
-export {registerUser , loginUser , logoutUser , generatingAccessTokens}
+export {registerUser , loginUser , logoutUser , refreshAccessTokens}
