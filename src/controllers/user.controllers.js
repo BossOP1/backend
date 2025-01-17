@@ -4,6 +4,7 @@ import {User} from "../models/users.models.js"
 import {uploadOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose, { Mongoose } from "mongoose";
 
 
 const generateAccessAndRefreshToken = async(userId)=>{
@@ -411,9 +412,63 @@ const getUserCurrentProfile = asyncHandler(async(req,res)=>{
         )
 })
 
+const getWatchHistory = asyncHandler(async(req,res)=>{
+      
+    const user = await User.aggregate([
+        {
+            $match:{
+                _id: new mongoose.Types.createFromHexString(req.user._id) // here we use this instead of only req.user?.id
+                                                                          // coz we get string not correct id
+            }
+        },
+        {
+            $lookup:{
+                from:"videos",
+                localField:"watchHistory",
+                foreignField:"_id",
+                as:"watchHistory",
+                pipeline:[
+                    {
+                    $lookup:{
+                        from:"users",
+                        localField:"owners",
+                        foreignField:"_id",
+                        as:"owners",
+                        pipeline:[
+                            {
+                                $project:{
+                                    fullName:1,
+                                    username:1,
+                                    avatar:1,
+                                }
+                        }
+                    ]
+                    }
+                },
+                {
+                    $addFields:{
+                        owner:{
+                            $first:"owner"
+                        }
+                    }
+                }
+            ]
+            }
+        }
+    ])
+       
+        return res
+        .status(200)
+        .json(new ApiResponse(
+            200,
+            user[0].watchHistory,
+            "watch history fetched successfully"
+        ))
+})
 
 
 export {registerUser , loginUser , logoutUser , refreshAccessTokens , 
     changeCurrentPassword, getCurrentUser , updateAccountDetails ,
-    updateAvatarDetails,updateCoverImageDetails
+    updateAvatarDetails,updateCoverImageDetails,getUserCurrentProfile,
+    getWatchHistory
 }
