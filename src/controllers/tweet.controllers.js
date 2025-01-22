@@ -1,11 +1,11 @@
 import mongoose, { isValidObjectId } from "mongoose";
-import { ApiResponse } from "../utils/apiResponse";
-import { apiError } from "../utils/apiError";
-import { asyncHandler } from "../utils/asyncHandler";
-import { User } from "../models/users.models";
-import { Tweet } from "../models/tweet.models";
+import { ApiResponse } from "../utils/apiResponse.js";
+import { apiError } from "../utils/apiError.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
+import { User } from "../models/users.models.js";
+import { Tweet } from "../models/tweet.models.js";
 
-const createTweet = asyncHandler(async(res,req)=>{
+const createTweet = asyncHandler(async(req,res)=>{
        
     // 1. content from user
       const{content} = req.body
@@ -14,7 +14,7 @@ const createTweet = asyncHandler(async(res,req)=>{
         throw new apiError(400,"tweet content does not found")
       }
     // creating posttweet on database
-      const postTweet = await User.create({
+      const postTweet = await Tweet.create({
         owner:req.user?._id,
         content:content
        } )
@@ -32,7 +32,7 @@ const createTweet = asyncHandler(async(res,req)=>{
         ))
 })
 
-const getUserTweet = asyncHandler(async(res,req)=>{
+const getUserTweet = asyncHandler(async(req,res)=>{
    try {
          // taking user id from params URL
      const {userId }= req.params
@@ -54,7 +54,7 @@ const getUserTweet = asyncHandler(async(res,req)=>{
      .status(200)
      .json(new ApiResponse(200,
          {
-             totalTweets: userTweet.length(),
+             totalTweets: userTweet.length,
              userTweet : userTweet
          },
          "tweets found")
@@ -65,7 +65,7 @@ const getUserTweet = asyncHandler(async(res,req)=>{
 
 })
 
-const updateTweet = asyncHandler(async(res,req)=>{
+const updateTweet = asyncHandler(async(req,res)=>{
           
       try {
           // 1, taking user id from params URL and tweet id from params
@@ -108,12 +108,12 @@ const updateTweet = asyncHandler(async(res,req)=>{
 
 })
 
-const deleteTweet = asyncHandler(async(res,req)=>{
+const deleteTweet = asyncHandler(async(req,res)=>{
      
     
   try {
       // 1. finding tweet id
-     const tweetId = req.params
+     const {tweetId} = req.params
        
      if(!tweetId){
       throw new apiError(404,"tweet id doesnot found")

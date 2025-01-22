@@ -7,15 +7,17 @@ import jwt from "jsonwebtoken";
 import mongoose, { Mongoose } from "mongoose";
 
 
-const generateAccessAndRefreshToken = async(userId)=>{
+const generateAccessAndRefreshTokens = async(userId)=>{
     try {
         const user = await User.findById(userId)
-        const accessToken = user.generateAccessToken()
-        const refreshToken = user.generateRefreshToken()
-      // console.log("refresh token is--->",refreshToken)
-      // console.log("Access token is--->",accessToken)
+        console.log("user 2 is--->",user)
+        const accessToken = await user.generateAccessToken()
+        const refreshToken = await user.generateRefreshToken()
+       console.log("refresh token is ^^^^^--->",refreshToken)
+       console.log("Access token is ^^^^^--->",accessToken)
 
         user.refreshToken = refreshToken
+
         await user.save({validateBeforeSave:false})
         return {accessToken,refreshToken}
 
@@ -115,10 +117,11 @@ const loginUser = asyncHandler(async(req,res)=>{
    }
      
    // access and refresh token
-    const {accessToken , refreshToken} =  await generateAccessAndRefreshToken(user._id)
-
+    const {accessToken , refreshToken} =  await generateAccessAndRefreshTokens(user._id)
+     //  console.log("accesstoken in login,",accessToken)
+    //   console.log("refreshtoken in login",refreshToken)
     const loggedInUser = await User.findById(user._id).select("-password -refreshTokens")
-    // console.log("logged in user details are *********",loggedInUser)
+    // console.log("logged in user details are **yuyuyuyuyuy*******",loggedInUser)
     // for cookies
     const options = {
         httpOnly: true,
@@ -132,7 +135,7 @@ const loginUser = asyncHandler(async(req,res)=>{
         new ApiResponse(
             200,
             {
-                user:accessToken,refreshToken,loggedInUser
+                user: accessToken,refreshToken,loggedInUser
             },
             " user logged in successfully"
         )
@@ -173,7 +176,7 @@ const refreshAccessTokens = asyncHandler(async (req,res)=>{
 
     // incomingfreshtoken sent by user
     const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
-
+     console.log("refresh token is--->",incomingRefreshToken)
     if(!incomingRefreshToken){
         throw new apiError(401,"user unauthorized")
     }
@@ -183,15 +186,23 @@ const refreshAccessTokens = asyncHandler(async (req,res)=>{
             incomingRefreshToken,
             process.env.REFRESH_TOKEN_SECRET,
         )
+
+        console.log("%%%%%%%%%",decodedToken)
          
         const user = await User.findById(decodedToken?._id)
-        
+        if (!decodedToken?._id) {
+            throw new apiError(401, "Invalid token or missing user ID");
+          }
+          
+        console.log("user  is---->",user)
+
+        console.log("id from the user is--&&7",user._id)
         if(!user){
             throw new apiError(401,"invalid refresh token")
         }
-    
+         console.log("hbcskbckhdbvbhd--->",user?.refreshToken)
         if(incomingRefreshToken !== user?.refreshToken){
-            throw new apiError("refresh token is expired or used")
+            throw new apiError(500,"refresh token is expired or used")
         }
     
         const options = {
@@ -200,8 +211,8 @@ const refreshAccessTokens = asyncHandler(async (req,res)=>{
         }
         
         const {accessToken,newRefreshToken} = 
-        await generateAccessAndRefreshToken(user._id)
-    
+        await generateAccessAndRefreshTokens(user._id)
+        
         return res.status(202)
         .cookie("accessToken",accessToken,options)
         .cookie("refreshToken",newRefreshToken,options)
@@ -247,7 +258,7 @@ const changeCurrentPassword = asyncHandler(async(req,res)=>
 const getCurrentUser = asyncHandler(async(req,res)=>{
     return res
     .status(202)
-    .json(202,req.user,"current user set successfully")
+    .json(new ApiResponse(202,req.user,"current user set successfully"))
 })
 
 const updateAccountDetails = asyncHandler(async(req,res)=>{
@@ -261,8 +272,9 @@ const updateAccountDetails = asyncHandler(async(req,res)=>{
       const user = await User.findByIdAndUpdate(req?.user._id,
             {
                $set:{
-                fullName,
-                email
+                email:email,
+                fullName
+               
                }
             },{new:true}
       ).select("-password")
