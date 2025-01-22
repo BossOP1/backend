@@ -32,11 +32,11 @@ const registerUser = asyncHandler(async(req,res)=>{
    //  console.log("email :",email)
     // console.log("req.body -------->",req.body)
 if(
-    [fullName,password,email,username].some((field)=>(field)?.trim === "")   // .some is a js method
+    [fullName,password,email,username].some((field)=>(field)?.trim() === "")   // .some is a js method
 )    {
     throw new apiError(400,"all fields are required")
   }
- 
+     
   const existedUser = await User.findOne({            // find one is mogo Db method
     $or: [{username},{email}]
   })
@@ -44,11 +44,23 @@ if(
   if(existedUser){
     throw new apiError(409,"user with same email or username already existed")
   }
-    
-       const avatarLocalPath = req.files?.avatar[0].path;           //.files is a milter ethod
-       const coverImageLocalPath = req.files?.coverImage[0].path;
-    //   console.log("req.files -------->",req.files)
+    //  console.log("fullName-->",fullName)
+    //  console.log("password--->",password)
+   //   console.log("email",email)
+     // console.log("username",username)
 
+
+
+       const avatarLocalPath = req.files?.avatar[0]?.path;           //.files is a milter ethod
+     //  console.log("fnkfkjd",avatarLocalPath)
+    //    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+    let coverImageLocalPath;
+    if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
+        coverImageLocalPath = req.files.coverImage[0].path
+    }
+      //  console.log("req.files -------->",req.files)
+     //   console.log("req.files?.avatar[0]",req.files?.avatar[0])
        if(!avatarLocalPath){
           throw new apiError(400,"avatar not exist")
        }
@@ -273,7 +285,7 @@ const updateAccountDetails = asyncHandler(async(req,res)=>{
             {
                $set:{
                 email:email,
-                fullName
+                fullName,
                
                }
             },{new:true}

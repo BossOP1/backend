@@ -120,7 +120,8 @@ const deleteTweet = asyncHandler(async(req,res)=>{
      }
       
      // 2. verifying user id and tweet Id
-  
+       console.log("tweet owner id is",req.user?._id)
+       console.log("tweet id is",tweetId)
      const validateTweet = await Tweet.findOne(
      {
            owner: req.user?._id,
