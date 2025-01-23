@@ -324,7 +324,7 @@ const updateAvatarDetails = asyncHandler(async(req,res)=>{
          return res
          .status(200)
          .json( 
-            new ApiResponse( 200,user,"avatar changes successfully")
+            new ApiResponse( 200,user,"avatar changed successfully")
          )
 })
 
