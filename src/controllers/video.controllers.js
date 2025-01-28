@@ -1,18 +1,168 @@
-import { apiError } from "../utils/apiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { Video } from "../models/video.models.js";
 import { ApiResponse } from "../utils/apiResponse.js";
-import { isValidObjectId } from "mongoose";
-
-
+import mongoose, { isValidObjectId } from "mongoose";
+import{apiError} from "../utils/apiError.js"
 
 
 const getAllVideos = asyncHandler(async(req,res)=>{
-      
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
 
-  //  const videos = 
+    const { page = 1, limit = 10, query = "", sortBy = "createdAt", sortType = 1, userId = "" } = req.query
+    if(userId && !mongoose.Types.ObjectId.isValid(userId)){
+     throw new apiError(400,"userId invalid")
+    }
+   try {
+    // let pipeline = [
+    //      {
+    //        $match: {
+    //          $and:[
+    //            // query
+    //           {
+    //            $or:[
+    //            {
+    //           //title
+    //            title :{$regex:query , options:"i"}
+    //            },
+                  
+    //            {
+    //              // description
+    //              description:{$regex:query,options:"i"}
+    //            }]
+    //          },
+               
+    //             //user
+    //            ...(userId?[
+    //              {
+    //          Owner: new mongoose.Types.ObjectId(`${userId}`)
+    //            }
+    //          ] : "")
+    //          ]  
+    //        }
+    //      },
+    //      {
+    //         $lookup: {
+    //           from: "users",                // Join with the "users" collection
+    //           localField: "Owner",          // Match the "Owner" field in "Video"
+    //           foreignField: "_id",          // To the "_id" field in "users"
+    //           as: "Owner",                  // Store the result in the "Owner" field
+    //           pipeline: [                   // Sub-pipeline for the "users" collection
+    //             {
+    //               $project: {               // Only include specific fields
+    //                 _id: 1,
+    //                 fullName: 1,
+    //                 username: 1,
+    //                 avatar: "$avatar.url",  // Fetch "avatar.url" directly
+    //               },
+    //             },
+    //           ],
+    //         },
+    //       },
+    //      {
+          
+    //     $addFields:{
+    //      $Owner:{
+    //          $first: "$Owner",
+    //      }
+    //     }
+    //      },
+    //      {
+    //        $sort:{
+    //          [sortBy] : sortType,
+    //        }
+    //      } 
+    //    ]
+
+    let pipeline = [
+        // Match videos based on query and userId
+        {
+          $match: {
+            $and: [
+              {
+                $or: [
+                  { title: { $regex: query, $options: "i" } },
+                  { description: { $regex: query, $options: "i" } },
+                ],
+              },
+              ...(userId
+                ? [
+                    {
+                      Owner: new mongoose.Types.ObjectId(userId),
+                    },
+                  ]
+                : []),
+            ],
+          },
+        },
+      
+        // Lookup to fetch user details
+        {
+          $lookup: {
+            from: "users",
+            localField: "Owner",
+            foreignField: "_id",
+            as: "Owner",
+            pipeline: [
+              {
+                $project: {
+                  _id: 1,
+                  fullName: 1,
+                  username: 1,
+                  avatar: "$avatar.url",
+                },
+              },
+            ],
+          },
+        },
+      
+        // Extract first user from the Owner array
+        {
+          $addFields: {
+            $Owner: {
+              $first: "$Owner",
+            },
+          },
+        },
+      
+        // Sort videos
+        {
+          $sort: {
+            [sortBy || "createdAt"]: sortType || -1,
+          },
+        },
+      ];
+      
+      
+   } catch (error) {
+     throw new apiError(400,error.message || "there is problem in aggregattion")
+   }
+
+
+      try {
+      
+        const options = {  // options for pagination
+          page: parseInt( page ),
+          limit: parseInt( limit ),
+          customLabels: {   // custom labels for pagination
+              totalDocs: "totalVideos",
+              docs: "videos",
+          },
+      };
+      console.log("Pipeline result: ", pipeline);
+      const result = await Video.aggregatePaginate(
+        Video.aggregate(pipeline),options)
+      
+      if(result?.videos?.length === 0){
+        throw new apiError(400,"no video found")
+      }
+
+      return res
+      .status(200,
+        new ApiResponse(200,result,"videos has been fetched successfully"))
+   
+      } catch (error) {
+        throw new apiError(400 ,"there is inside problem in pagination")
+      }
 
 })
 
@@ -71,7 +221,7 @@ const publishAVideo = asyncHandler(async(req,res)=>{
              video,
             "video has been uploaded successfully"))
     } catch (error) {
-        throw new apiError(400,error.message || " problem in uploadvideo method")
+        throw new apiError(400,error.message || " problem in upload video method")
     }
     
     
