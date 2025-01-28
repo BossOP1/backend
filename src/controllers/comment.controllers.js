@@ -9,6 +9,44 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 
 const getVideoComments = asyncHandler(async(req,res)=>{
+       
+        const{videoId} =req.params
+
+        if(!isValidObjectId(videoId)){
+            throw new apiError(400,"invalid video id")
+        }
+           let page = 1;
+           let limit = 5;
+        let pipeline = [
+            {
+                $match:{
+                    video : mongoose.Types.ObjectId.createFromHexString(videoId)
+                }
+            }
+        ]
+          
+        const options = {
+            page: parseInt( page ),
+            limit: parseInt( limit ),
+            customLabels: {
+                totalDocs: "total_comments",
+                docs: "Comments"
+            }
+        }
+
+        const result = await Comment.aggregatePaginate((pipeline),options)
+        console.log("pipeline",pipeline)
+         console.log("result is",result)
+
+        if(result?.total_comments === 0){
+            throw new apiError(400, "no videos found")
+        }
+        
+        return res
+        .status(200)
+        .json(new ApiResponse(200,result,"all videos has been fetched successfully"))
+
+
 
 })
 

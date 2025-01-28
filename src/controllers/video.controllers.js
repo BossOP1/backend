@@ -11,133 +11,65 @@ const getAllVideos = asyncHandler(async(req,res)=>{
     const { page = 1, limit = 10, query = "", sortBy = "createdAt", sortType = 1, userId = "" } = req.query
     if(userId && !mongoose.Types.ObjectId.isValid(userId)){
      throw new apiError(400,"userId invalid")
+    
     }
-   try {
-    // let pipeline = [
-    //      {
-    //        $match: {
-    //          $and:[
-    //            // query
-    //           {
-    //            $or:[
-    //            {
-    //           //title
-    //            title :{$regex:query , options:"i"}
-    //            },
-                  
-    //            {
-    //              // description
-    //              description:{$regex:query,options:"i"}
-    //            }]
-    //          },
-               
-    //             //user
-    //            ...(userId?[
-    //              {
-    //          Owner: new mongoose.Types.ObjectId(`${userId}`)
-    //            }
-    //          ] : "")
-    //          ]  
-    //        }
-    //      },
-    //      {
-    //         $lookup: {
-    //           from: "users",                // Join with the "users" collection
-    //           localField: "Owner",          // Match the "Owner" field in "Video"
-    //           foreignField: "_id",          // To the "_id" field in "users"
-    //           as: "Owner",                  // Store the result in the "Owner" field
-    //           pipeline: [                   // Sub-pipeline for the "users" collection
-    //             {
-    //               $project: {               // Only include specific fields
-    //                 _id: 1,
-    //                 fullName: 1,
-    //                 username: 1,
-    //                 avatar: "$avatar.url",  // Fetch "avatar.url" directly
-    //               },
-    //             },
-    //           ],
-    //         },
-    //       },
-    //      {
-          
-    //     $addFields:{
-    //      $Owner:{
-    //          $first: "$Owner",
-    //      }
-    //     }
-    //      },
-    //      {
-    //        $sort:{
-    //          [sortBy] : sortType,
-    //        }
-    //      } 
-    //    ]
-
+    const sortOrder = parseInt(sortType, 10) === -1 ? -1 : 1;
     let pipeline = [
-        // Match videos based on query and userId
-        {
-          $match: {
-            $and: [
-              {
-                $or: [
-                  { title: { $regex: query, $options: "i" } },
-                  { description: { $regex: query, $options: "i" } },
-                ],
-              },
-              ...(userId
-                ? [
-                    {
-                      Owner: new mongoose.Types.ObjectId(userId),
-                    },
-                  ]
-                : []),
-            ],
-          },
-        },
-      
-        // Lookup to fetch user details
-        {
-          $lookup: {
-            from: "users",
-            localField: "Owner",
-            foreignField: "_id",
-            as: "Owner",
-            pipeline: [
-              {
-                $project: {
-                  _id: 1,
-                  fullName: 1,
-                  username: 1,
-                  avatar: "$avatar.url",
-                },
-              },
-            ],
-          },
-        },
-      
-        // Extract first user from the Owner array
-        {
-          $addFields: {
-            $Owner: {
-              $first: "$Owner",
+      // Match videos based on query and userId
+      {
+        $match: {
+          $and: [
+            {
+              $or: [
+                { title: { $regex: query, $options: "i" } },
+                { description: { $regex: query, $options: "i" } },
+              ],
             },
+            ...(userId
+              ? [
+                  {
+                    Owner: mongoose.Types.ObjectId.createFromHexString(userId),
+                  },
+                ]
+              : []),
+          ],
+        },
+      },
+    
+      // Lookup to fetch user details
+      {
+        $lookup: {
+          from: "users",
+          localField: "Owner",
+          foreignField: "_id",
+          as: "Owner",
+          pipeline: [
+            {
+              $project: {
+                _id: 1,
+                fullName: 1,
+                username: 1,
+                avatar:1,
+              },
+            },
+          ],
+        },
+      },
+    
+      // Extract first user from the Owner array
+      {
+        $addFields: {
+          Owner: {
+            $first: "$Owner",
           },
         },
-      
-        // Sort videos
-        {
-          $sort: {
-            [sortBy || "createdAt"]: sortType || -1,
+      },
+    
+      // Sort videos
+      {
+        $sort: { [sortBy]: sortOrder }, 
           },
-        },
-      ];
-      
-      
-   } catch (error) {
-     throw new apiError(400,error.message || "there is problem in aggregattion")
-   }
-
-
+    ];
       try {
       
         const options = {  // options for pagination
@@ -148,10 +80,12 @@ const getAllVideos = asyncHandler(async(req,res)=>{
               docs: "videos",
           },
       };
-      console.log("Pipeline result: ", pipeline);
+      
       const result = await Video.aggregatePaginate(
         Video.aggregate(pipeline),options)
-      
+        console.log("main pipeline is",pipeline)
+        console.log("Pipeline result: ", result);
+        console.log("Pipeline:", JSON.stringify(pipeline, null, 2));
       if(result?.videos?.length === 0){
         throw new apiError(400,"no video found")
       }
@@ -161,7 +95,7 @@ const getAllVideos = asyncHandler(async(req,res)=>{
         new ApiResponse(200,result,"videos has been fetched successfully"))
    
       } catch (error) {
-        throw new apiError(400 ,"there is inside problem in pagination")
+        throw new apiError(400 ,error.message || "there is inside problem in pagination")
       }
 
 })
@@ -359,6 +293,28 @@ const deleteVideo = asyncHandler(async(req,res)=>{
 const togglePublishStatus = asyncHandler(async(req,res)=>{
     const{videoId} = req.params
 
+    if(!isValidObjectId(videoId)){
+      throw new apiError(400,"invalid video id")
+    }
+
+    const toggleIsPublished = await Video.findOne(
+      {
+        owner: req.user?._id,
+        _id:videoId,
+      }
+    )
+
+    if(!toggleIsPublished){
+      throw new apiError(400,"video does not found")
+    }
+    
+    toggleIsPublished.isPublished = !toggleIsPublished.isPublished
+
+    await toggleIsPublished.save()
+
+    return res
+    .status(200)
+    .json(new ApiResponse(200,toggleIsPublished.isPublished,"toggle has been publishes successfully"))
 })
 
 export {
