@@ -42,7 +42,6 @@ const videoSchema =  new mongoose.Schema(
         ref:"User"
        }
 
-
     },
 {
     timestamps: true,
