@@ -1,6 +1,5 @@
 import { isValidObjectId } from "mongoose";
 import { Like } from "../models/like.models.js";
-import { Video } from "../models/video.models.js";
 import { apiError } from "../utils/apiError.js";
 import { ApiResponse } from "../utils/apiResponse.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
@@ -125,6 +124,30 @@ const toggleTweetLike = asyncHandler(async(req,res)=>{
 
 const getLikedVideos = asyncHandler(async(req,res)=>{
       
+    const allLikedVid = await Like.find(
+        {
+            $and:[
+      { 
+        likedBy:req.user?.id,
+          }             ,
+     {
+           video:{$exists:true}
+       }
+            ]
+              
+            }
+           
+    )
+
+    if(!allLikedVid){
+        throw new apiError(400,"no liked videos found")
+    }
+
+    return res
+    .status(202)
+    .json(new ApiResponse(200,{"total_liked_videos =": allLikedVid.length , "videos:":allLikedVid},"videos found!"))
+     
+
 })
 
 export  {
