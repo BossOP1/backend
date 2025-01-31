@@ -203,9 +203,9 @@ const updatePlaylist = asyncHandler(async(req,res)=>{
     const {playlistId} = req.params
     const {name,description} = req.body
 
-    console.log("playlistId",playlistId)
-    console.log("name",name)
-    console.log("description",description)
+  //  console.log("playlistId",playlistId)
+  //  console.log("name",name)
+//console.log("description",description)
 
     if(!isValidObjectId(playlistId)){
         throw new apiError(400,"invalid playlistId")
@@ -217,8 +217,8 @@ const updatePlaylist = asyncHandler(async(req,res)=>{
 
     const playlist = await Playlist.findById(playlistId)
 
-    console.log("playlist.owner",playlist.owner)
-    console.log("req.user?._id",req.user?._id)
+   // console.log("playlist.owner",playlist.owner)
+  //  console.log("req.user?._id",req.user?._id)
 
     
     if(!playlist.owner.equals(req.user?._id)){
