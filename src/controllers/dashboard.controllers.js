@@ -5,6 +5,7 @@ import { Video } from "../models/video.models.js"
 import { apiError } from "../utils/apiError.js"
 import { ApiResponse } from "../utils/apiResponse.js"
 import { asyncHandler } from "../utils/asyncHandler.js"
+import { getAllVideos } from "./video.controllers.js"
 
 
 
@@ -172,6 +173,43 @@ const getChannelStats = asyncHandler(async(req,res)=>{
      )
  })
 
+    const getChannelVideos = asyncHandler(async(req,res)=>{
+        const {channelId} = req.params
+        if(!isValidObjectId){
+            throw new apiError(400,"invalid channel id")
+        }
+        const allVideos = await Video.aggregate(
+        
+            [
+                {
+                    $match:{
+                        owner:new mongoose.Types.ObjectId(channelId)
+                    }
+                },
+                {
+                    $project:{
+                        videoFile:1,
+                        thumbnail:1,
+                        title:1,
+                        duration:1,
+                        views:1,
+                        isPublished:1,
+                        owner:1,
+                        createdAt:1,
+                        updatedAt:1
+                    }
+                }
+            ]
+        )
 
- export {getChannelStats}
+        return res
+        .status(200)
+        .json(new ApiResponse(200,allVideos,"videos fetched successfully"))
+
+   
+         
+    })
+
+
+ export {getChannelStats,getChannelVideos}
 
